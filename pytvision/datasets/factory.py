@@ -11,6 +11,7 @@ from . import cub2011
 from . import cars196
 from . import stanford_online_products
 from . import afew
+from . import affect
 
 
 def create_folder(pathname, name):    
@@ -41,6 +42,9 @@ class FactoryDataset(object):
     jaffe='jaffe'
     bu3dfe='bu3dfe'
     afew='afew'
+    affect='affectnet'
+    affectdark='affectnetdark'
+
 
     cub2011='cub2011'
     cars196='cars196'
@@ -140,7 +144,7 @@ class FactoryDataset(object):
             data = imaterialist.IMaterialistDatset(pathname, subset, 'jpg')
 
 
-        # fer recognition datasets
+        # fer datasets
 
         elif name == 'ferp':
             pathname = create_folder(pathname, name)            
@@ -176,6 +180,16 @@ class FactoryDataset(object):
             data = afew.Afew(pathname, train=btrain,  download=download)
             data.labels = np.array( data.targets )   
     
+        elif name == 'affectnet':
+            btrain=(subset=='train')
+            pathname = create_folder(pathname, name)
+            data = affect.create_affect(path=pathname, train=btrain )
+
+        elif name == 'affectnetdark':
+            btrain=(subset=='train')
+            pathname = create_folder(pathname, 'affectnet')
+            data = affect.create_affectdark(path=pathname, train=btrain )
+
 
         # metric learning dataset
 

@@ -4,13 +4,12 @@ import numpy as np
 
 #import matplotlib
 #matplotlib.use('agg')
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 import cv2
 
 import torch
 from torchvision import transforms, utils
 from graphviz import Digraph
-
 
 import PIL.Image as Image
 import PIL.ImageColor as ImageColor
@@ -181,7 +180,7 @@ def makeedgecell(labels):
         mask  = labels[:,:,i]
         color = cmap(float(i)/ch)
         mask = mask.astype(np.uint8)
-        _,contours,_ = cv2.findContours(mask, cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE )
+        contours,_ = cv2.findContours(mask, cv2.RETR_LIST,cv2.CHAIN_APPROX_NONE )
         for cnt in contours: cv2.drawContours(imedge, cnt, -1, color[:3], 1)
     return imedge
 
