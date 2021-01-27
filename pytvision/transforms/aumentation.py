@@ -12,6 +12,7 @@ from . import functional as F
 interpolate_image_mode   = cv2.INTER_LINEAR
 interpolate_mask_mode    = cv2.INTER_NEAREST
 interpolate_weight_mode  = cv2.INTER_LINEAR
+interpolate_seg_mode     = cv2.INTER_NEAREST
 
 
 class ObjectTransform(object):
@@ -881,3 +882,124 @@ class ObjectImage2ImageTransform(ObjectTransform):
     ##interface of value/tupla output
     def to_value(self):
         return self.x, self.y
+    
+    
+class ObjectImageMaskAndSegmentationsTransform(ObjectImageAndMaskTransform):
+    def __init__(self, image, mask, segment ):
+        """
+        Arg:
+            @image
+            @mask
+            @segmentations
+        """
+        super(ObjectImageMaskAndSegmentationsTransform, self).__init__(image, mask)
+        self.segment = segment
+
+
+    #pytorch transform
+    def to_tensor(self):
+
+        image  = self.image
+        mask   = self.mask
+        segment = self.segment
+        mask = (mask>0).astype( np.uint8 )
+
+        # numpy image: H x W x C
+        # torch image: C X H X W
+        image   = image.transpose((2, 0, 1)).astype(np.float)
+        mask    = mask.transpose((2, 0, 1)).astype(np.float)
+        segment = segment.transpose((2, 0, 1)).astype(np.float)
+
+        self.image  = torch.from_numpy(image).float()
+        self.mask   = torch.from_numpy(mask).float()
+        self.segment = torch.from_numpy(segment).float()
+
+
+    #Geometric transformation
+
+    def crop( self, box, padding_mode):
+        """Crop: return if validate crop
+        """
+        image = F.imcrop( self.image, box, padding_mode )
+        mask = F.imcrop( self.mask, box, padding_mode )
+        segment = F.imcrop( self.segment, box, padding_mode )
+
+        if mask.sum() > 10: #area>10
+            self.image = image
+            self.mask = mask
+            self.segment = segment
+            return True
+
+        return False
+
+    def scale( self, factor, padding_mode = cv2.BORDER_CONSTANT ):
+        self.image  = F.scale( self.image,  factor, interpolate_image_mode,  padding_mode )
+        self.mask   = F.scale( self.mask,   factor, interpolate_mask_mode,   padding_mode )
+        self.segment = F.scale( self.segment, factor, interpolate_seg_mode, padding_mode )
+
+    def pad( self, h_pad = 2, w_pad = 2, padding_mode = cv2.BORDER_CONSTANT ):
+        self.image  = F.pad(self.image,  h_pad, w_pad, padding_mode)
+        self.mask   = F.pad(self.mask,   h_pad, w_pad, padding_mode)
+        self.segment = F.pad(self.segment, h_pad, w_pad, padding_mode)
+
+    def hflip(self):
+        self.image  = F.hflip( self.image )
+        self.mask   = F.hflip( self.mask )
+        self.segment = F.hflip( self.segment )
+
+    def vflip(self):
+        self.image  = F.vflip( self.image )
+        self.mask   = F.vflip( self.mask )
+        self.segment = F.vflip( self.segment )
+
+    def rotate90(self):
+        self.image  = F.rotate90( self.image )
+        self.mask   = F.rotate90( self.mask )
+        self.segment = F.rotate90( self.segment )
+
+    def rotate180(self):
+        self.image  = F.rotate180( self.image )
+        self.mask   = F.rotate180( self.mask )
+        self.segment = F.rotate180( self.segment )
+
+    def rotate270(self):
+        self.image  = F.rotate270( self.image )
+        self.mask   = F.rotate270( self.mask )
+        self.segment = F.rotate270( self.segment )
+
+    def applay_geometrical_transform(self, mat_r, mat_t, mat_w, padding_mode = cv2.BORDER_CONSTANT ):
+        self.image  = F.applay_geometrical_transform( self.image,  mat_r, mat_t, mat_w, interpolate_image_mode,  padding_mode )
+        self.mask   = F.applay_geometrical_transform( self.mask,   mat_r, mat_t, mat_w, interpolate_mask_mode,   padding_mode )
+        self.segment = F.applay_geometrical_transform( self.segment, mat_r, mat_t, mat_w, interpolate_seg_mode, padding_mode )
+        return True
+
+    def applay_elastic_transform(self, mapx, mapy, padding_mode = cv2.BORDER_CONSTANT):
+        self.image  = F.cunsqueeze( cv2.remap(self.image,  mapx, mapy, interpolate_image_mode,  borderMode=padding_mode) )
+        self.mask   = F.cunsqueeze( cv2.remap(self.mask,   mapx, mapy, interpolate_mask_mode,   borderMode=padding_mode) )
+        self.segment = F.cunsqueeze( cv2.remap(self.segment, mapx, mapy, interpolate_seg_mode, borderMode=padding_mode) )
+
+    def applay_elastic_tensor_transform(self, grid):
+        self.image   = grid_sample( torch.unsqueeze( self.image,  dim=0 ), grid ).data[0,...]
+        self.mask    = grid_sample( torch.unsqueeze( self.mask,   dim=0 ), grid ).round().data[0,...]
+        self.segment = grid_sample( torch.unsqueeze( self.segment, dim=0 ), grid ).data[0,...]
+
+    ### resize
+    def resize(self, imsize, resize_mode, padding_mode):
+        self.image  = F.resize_image(self.image,  imsize[1], imsize[0],  resize_mode, padding_mode, interpolate_mode=interpolate_image_mode  )
+        self.mask   = F.resize_image(self.mask,   imsize[1], imsize[0],  resize_mode, padding_mode, interpolate_mode=interpolate_mask_mode   )
+        self.segment = F.resize_image(self.segment, imsize[1], imsize[0],  resize_mode, padding_mode, interpolate_mode=interpolate_seg_mode )
+
+    def resize_unet_input( self, fov_size=388, padding_mode = cv2.BORDER_CONSTANT ):
+        super(ObjectImageMaskAndSegmentationsTransform, self).resize_unet_input(fov_size, padding_mode)
+        self.segment = F.resize_unet_transform(self.segment, fov_size,  interpolate_seg_mode,  padding_mode)
+
+    ##interface of output
+    def to_dict(self):
+        return {
+            'image': self.image,
+            'label': self.mask,
+            'segment': self.segment,
+             }
+
+    def to_value(self):
+        return self.image, self.mask, self.segment
