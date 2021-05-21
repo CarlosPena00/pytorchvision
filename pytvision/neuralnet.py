@@ -12,7 +12,7 @@ import torch.nn.functional as F
 
 #LOCAL MODULES
 from . import netlearningrate
-from . import graphic as gph
+#from . import graphic as gph
 from . import utils
 
 #----------------------------------------------------------------------------------------------
@@ -126,7 +126,7 @@ class NeuralNetAbstract(object):
             os.makedirs(self.pathmodels)
         
         # create visual visdom plot
-        self.plotter =  gph.VisdomLinePlotter(env_name=self.nameproject)
+        #self.plotter =  gph.VisdomLinePlotter(env_name=self.nameproject)
                 
         self._create_model( arch, num_output_channels, num_input_channels, pretrained, **cfg_model )
         self._create_loss( loss, **cfg_loss )
@@ -278,7 +278,7 @@ class NeuralNetAbstract(object):
             lr = self.lrscheduler.get_lr()[0]        
 
         # draw
-        self.plotter.plot('lr', 'learning rate', epoch, lr )
+        #self.plotter.plot('lr', 'learning rate', epoch, lr )
  
     def resume(self, pathnammodel):
         """
