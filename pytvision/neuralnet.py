@@ -242,7 +242,6 @@ class NeuralNetAbstract(object):
         #MultiStepLR(optimizer, milestones=[30,80], gamma=0.1)
         #ExponentialLR
         #CosineAnnealingLR
-
         self.lrscheduler = None
 
         if lrsch == 'fixed':
@@ -316,21 +315,24 @@ class NeuralNetAbstract(object):
             filename
             )
    
-    def load(self, pathnamemodel):
+    def load(self, pathnamemodel, verbose=True):
         bload = False
         if pathnamemodel:
             if os.path.isfile(pathnamemodel):
-                print("=> loading checkpoint '{}'".format(pathnamemodel))
-                checkpoint = torch.load( pathnamemodel ) if self.cuda else torch.load( pathnamemodel, map_location=lambda storage, loc: storage )
+                if verbose:
+                    print("=> loading checkpoint '{}'".format(pathnamemodel))
+                checkpoint = torch.load( pathnamemodel, map_location=lambda storage, loc: storage )
                 
                 self._create_model(checkpoint['arch'], checkpoint['num_classes'], checkpoint['num_channels'], False )      
                 self.size_input = checkpoint['imsize']         
                 self.net.load_state_dict( checkpoint['state_dict'] )               
 
-                print("=> loaded checkpoint for {} arch!".format(checkpoint['arch']))
+                if verbose:
+                    print("=> loaded checkpoint for {} arch!".format(checkpoint['arch']))
                 bload = True
             else:
-                print("=> no checkpoint found at '{}'".format(pathnamemodel))        
+                if verbose:
+                    print("=> no checkpoint found at '{}'".format(pathnamemodel))        
         return bload
    
     def __str__(self): 
